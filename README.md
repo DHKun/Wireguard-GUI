@@ -6,6 +6,28 @@
 
 管理本机的 WireGuard 接口与 Peer：状态监控、Peer 增删改、接口启停、配置文件读写与导入导出。
 
+## 界面预览
+
+截图使用示例配置和脱敏密钥。
+
+### 仪表盘
+
+查看接口地址、监听端口、流量速率、握手时间和 Peer 状态。
+
+![WireGuard 接口仪表盘](docs/screenshots/dashboard.png)
+
+### Peer 编辑
+
+添加或编辑 Peer，设置 AllowedIPs、Endpoint 和 PersistentKeepalive。
+
+![Peer 编辑器](docs/screenshots/peer-editor.png)
+
+### 配置中心
+
+读取、编辑、保存、热同步和导出 `/etc/wireguard/*.conf`。
+
+![WireGuard 配置中心](docs/screenshots/configuration.png)
+
 ## 功能
 
 | 模块 | 能力 |
