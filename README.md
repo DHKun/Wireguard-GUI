@@ -1,7 +1,7 @@
 # WireGuard 控制台
 
 <p align="center">
-  <img src="src-tauri/icons/icon.png" width="112" alt="WireGuard 控制台 Logo">
+  <img src="https://github.com/DHKun/Wireguard-GUI/releases/download/v0.3.0/icon.png" width="112" alt="WireGuard 控制台 Logo">
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -18,31 +18,31 @@
 
 查看接口地址、监听端口、流量速率、握手时间和 Peer 状态。
 
-![WireGuard 接口仪表盘](docs/screenshots/dashboard.png)
+![WireGuard 接口仪表盘](https://github.com/DHKun/Wireguard-GUI/releases/download/v0.3.0/dashboard.png)
 
 ### Peer 编辑
 
 添加或编辑 Peer，设置 AllowedIPs、Endpoint 和 PersistentKeepalive。
 
-![Peer 编辑器](docs/screenshots/peer-editor.png)
+![Peer 编辑器](https://github.com/DHKun/Wireguard-GUI/releases/download/v0.3.0/peer-editor.png)
 
 ### 配置中心
 
 读取、编辑、保存、热同步和导出 `/etc/wireguard/*.conf`。
 
-![WireGuard 配置中心](docs/screenshots/configuration.png)
+![WireGuard 配置中心](https://github.com/DHKun/Wireguard-GUI/releases/download/v0.3.0/configuration.png)
 
 ### 配置二维码
 
 将编辑器中的完整配置生成二维码。二维码包含私钥和预共享密钥，请仅使用可信设备扫描。
 
-![WireGuard 配置二维码](docs/screenshots/qr-code.png)
+![WireGuard 配置二维码](https://github.com/DHKun/Wireguard-GUI/releases/download/v0.3.0/qr-code.png)
 
 ### 启动与关闭
 
 配置开机自启、静默启动和关闭窗口行为。
 
-![WireGuard 启动与关闭设置](docs/screenshots/settings.png)
+![WireGuard 启动与关闭设置](https://github.com/DHKun/Wireguard-GUI/releases/download/v0.3.0/settings.png)
 
 ## 功能
 
