@@ -90,9 +90,9 @@ fn update_app_settings(
     next: AppSettings,
     state: tauri::State<'_, Mutex<AppSettings>>,
 ) -> Result<AppSettings, String> {
-    settings::save_settings(&next)?;
-    settings::apply_autostart(&next)?;
-    *state.lock().expect("settings lock") = next.clone();
+    let mut current = state.lock().expect("settings lock");
+    settings::update_settings(&current, &next)?;
+    *current = next.clone();
     Ok(next)
 }
 

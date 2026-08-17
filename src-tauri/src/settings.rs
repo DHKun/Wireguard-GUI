@@ -26,12 +26,14 @@ pub fn load_settings() -> AppSettings {
     load_settings_from(&settings_path())
 }
 
-pub fn save_settings(settings: &AppSettings) -> Result<(), String> {
-    save_settings_to(&settings_path(), settings)
-}
-
-pub fn apply_autostart(settings: &AppSettings) -> Result<(), String> {
-    apply_autostart_at(&autostart_path(), &launch_command()?, settings)
+pub fn update_settings(previous: &AppSettings, next: &AppSettings) -> Result<(), String> {
+    update_settings_at(
+        &settings_path(),
+        &autostart_path(),
+        &launch_command()?,
+        previous,
+        next,
+    )
 }
 
 fn xdg_config_home() -> PathBuf {
@@ -67,11 +69,28 @@ fn save_settings_to(path: &Path, settings: &AppSettings) -> Result<(), String> {
     fs::write(path, text).map_err(|error| format!("写入设置失败: {error}"))
 }
 
-fn apply_autostart_at(
-    path: &Path,
+fn update_settings_at(
+    settings_path: &Path,
+    autostart_path: &Path,
     command: &str,
-    settings: &AppSettings,
+    previous: &AppSettings,
+    next: &AppSettings,
 ) -> Result<(), String> {
+    apply_autostart_at(autostart_path, command, next)?;
+
+    if let Err(save_error) = save_settings_to(settings_path, next) {
+        return match apply_autostart_at(autostart_path, command, previous) {
+            Ok(()) => Err(save_error),
+            Err(rollback_error) => Err(format!(
+                "{save_error}；恢复开机自启项失败: {rollback_error}"
+            )),
+        };
+    }
+
+    Ok(())
+}
+
+fn apply_autostart_at(path: &Path, command: &str, settings: &AppSettings) -> Result<(), String> {
     if !settings.autostart {
         match fs::remove_file(path) {
             Ok(()) => Ok(()),
@@ -80,8 +99,7 @@ fn apply_autostart_at(
         }
     } else {
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|error| format!("创建开机自启目录失败: {error}"))?;
+            fs::create_dir_all(parent).map_err(|error| format!("创建开机自启目录失败: {error}"))?;
         }
         fs::write(
             path,
@@ -143,8 +161,7 @@ mod tests {
 
     #[test]
     fn unknown_settings_fields_are_ignored() {
-        let parsed: AppSettings =
-            serde_json::from_str(r#"{"autostart":true,"extra":1}"#).unwrap();
+        let parsed: AppSettings = serde_json::from_str(r#"{"autostart":true,"extra":1}"#).unwrap();
         assert!(parsed.autostart);
         assert!(!parsed.silent_start);
         assert!(!parsed.close_to_tray);
@@ -204,5 +221,73 @@ mod tests {
         save_settings_to(&path, &settings).unwrap();
         assert_eq!(load_settings_from(&path), settings);
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_autostart_update_does_not_persist_new_settings() {
+        let root = test_root("autostart-failure");
+        let settings_path = root.join("settings.json");
+        let blocker = root.join("autostart");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(&blocker, "not a directory").unwrap();
+
+        let previous = AppSettings::default();
+        let next = AppSettings {
+            autostart: true,
+            silent_start: true,
+            close_to_tray: false,
+        };
+        save_settings_to(&settings_path, &previous).unwrap();
+
+        let result = update_settings_at(
+            &settings_path,
+            &blocker.join(AUTOSTART_FILE),
+            "/opt/wireguard-gui",
+            &previous,
+            &next,
+        );
+
+        assert!(result.is_err());
+        assert_eq!(load_settings_from(&settings_path), previous);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_settings_save_restores_previous_autostart_state() {
+        let root = test_root("settings-failure");
+        let blocker = root.join("config");
+        let autostart_path = root.join("autostart").join(AUTOSTART_FILE);
+        fs::create_dir_all(&root).unwrap();
+        fs::write(&blocker, "not a directory").unwrap();
+
+        let previous = AppSettings::default();
+        let next = AppSettings {
+            autostart: true,
+            silent_start: true,
+            close_to_tray: false,
+        };
+
+        let result = update_settings_at(
+            &blocker.join(SETTINGS_FILE),
+            &autostart_path,
+            "/opt/wireguard-gui",
+            &previous,
+            &next,
+        );
+
+        assert!(result.is_err());
+        assert!(!autostart_path.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    fn test_root(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "wireguard-gui-{label}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ))
     }
 }
