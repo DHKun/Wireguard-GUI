@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ConfigurationQrModal from "./ConfigurationQrModal";
 import {
   ConfigurationLifecycle,
   isConfigurationName,
@@ -16,6 +17,7 @@ const configuration = new ConfigurationLifecycle(wireguard);
 export default function ConfigPanel({ notify }: Props) {
   const [configs, setConfigs] = useState<string[]>([]);
   const [document, setDocument] = useState<ConfigurationDocument | null>(null);
+  const [qrDocument, setQrDocument] = useState<ConfigurationDocument | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -199,6 +201,13 @@ export default function ConfigPanel({ notify }: Props) {
                   导出
                 </button>
               )}
+              <button
+                className="btn ghost"
+                onClick={() => setQrDocument(document)}
+                disabled={busy !== null || document.text.trim() === ""}
+              >
+                二维码
+              </button>
               <span className="muted small">
                 {document.dirty ? "● 未保存" : "已保存"} · 原文保存 · 权限 0600
               </span>
@@ -206,6 +215,14 @@ export default function ConfigPanel({ notify }: Props) {
           )}
         </div>
       </div>
+
+      {qrDocument && (
+        <ConfigurationQrModal
+          name={qrDocument.name || "未命名配置"}
+          configuration={qrDocument.text}
+          onClose={() => setQrDocument(null)}
+        />
+      )}
     </div>
   );
 }

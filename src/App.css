@@ -446,6 +446,47 @@ main {
   margin-top: 16px;
 }
 
+.qr-modal {
+  width: min(460px, 92vw);
+}
+
+.qr-document-name {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.qr-warning {
+  padding: 9px 11px;
+  color: var(--warn);
+  background: rgba(217, 164, 65, 0.08);
+  border: 1px solid rgba(217, 164, 65, 0.35);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.qr-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+  margin-top: 14px;
+  padding: 10px;
+  background: #fff;
+  border-radius: 10px;
+}
+
+.qr-preview img {
+  display: block;
+  width: min(360px, 100%);
+  height: auto;
+}
+
+.qr-preview .err-box {
+  width: 100%;
+}
+
 .err-box {
   background: rgba(224, 93, 93, 0.1);
   border: 1px solid rgba(224, 93, 93, 0.4);
