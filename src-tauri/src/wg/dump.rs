@@ -81,9 +81,8 @@ pub fn parse_dump(text: &str) -> Result<Vec<InterfaceDump>, String> {
             current = Some(idx);
         } else if parts.len() == 9 {
             // peer 行
-            let idx = current.ok_or_else(|| {
-                format!("dump 第 {} 行出现孤立 peer 记录", lineno + 1)
-            })?;
+            let idx =
+                current.ok_or_else(|| format!("dump 第 {} 行出现孤立 peer 记录", lineno + 1))?;
             let iface = &mut interfaces[idx];
             iface.peers.push(PeerStatus {
                 public_key: parts[1].to_string(),

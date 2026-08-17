@@ -102,8 +102,8 @@ pub fn parse_conf(text: &str) -> Result<WgConf, String> {
             continue;
         }
 
-        let (key, value) = parse_kv(line)
-            .ok_or_else(|| format!("第 {lnum} 行不是 key = value 格式: {line}"))?;
+        let (key, value) =
+            parse_kv(line).ok_or_else(|| format!("第 {lnum} 行不是 key = value 格式: {line}"))?;
         if value.is_empty() {
             continue;
         }
@@ -111,7 +111,8 @@ pub fn parse_conf(text: &str) -> Result<WgConf, String> {
         match section {
             1 => apply_interface_key(&mut conf.interface, &key, &value),
             2 => {
-                let idx = cur_peer.ok_or_else(|| format!("第 {lnum} 行 Peer 键出现在 Peer 段之外"))?;
+                let idx =
+                    cur_peer.ok_or_else(|| format!("第 {lnum} 行 Peer 键出现在 Peer 段之外"))?;
                 apply_peer_key(&mut conf.peers[idx], &key, &value);
             }
             _ => return Err(format!("第 {lnum} 行键出现在任何段之外: {line}")),
@@ -284,10 +285,16 @@ AllowedIPs = 10.66.67.0/24
         assert_eq!(conf.interface.listen_port, Some(51820));
         assert_eq!(conf.interface.mtu, Some(1420));
         assert_eq!(conf.interface.post_up.len(), 1);
-        assert_eq!(conf.interface.extras, vec![("FwMark".into(), "0xca6c".into())]);
+        assert_eq!(
+            conf.interface.extras,
+            vec![("FwMark".into(), "0xca6c".into())]
+        );
         assert_eq!(conf.peers.len(), 2);
         assert_eq!(conf.peers[0].allowed_ips.len(), 2);
-        assert_eq!(conf.peers[0].endpoint.as_deref(), Some("vpn.example.com:51820"));
+        assert_eq!(
+            conf.peers[0].endpoint.as_deref(),
+            Some("vpn.example.com:51820")
+        );
         assert!(conf.peers[1].preshared_key.is_none());
 
         let out = serialize_conf(&conf);
