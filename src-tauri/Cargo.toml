@@ -1,6 +1,6 @@
 [package]
 name = "wireguard-gui"
-version = "0.2.1"
+version = "0.3.0"
 description = "WireGuard 桌面管理工具（Tauri v2）"
 authors = ["DoHoKun <DHKun@users.noreply.github.com>"]
 edition = "2021"

@@ -91,14 +91,14 @@ Rust wg::ops（配置生命周期与 Runtime Interface 行为）
 
 ```bash
 # Debian / Ubuntu
-sudo apt install ./wireguard-gui_0.2.0_amd64.deb
+sudo apt install ./wireguard-gui_0.3.0_amd64.deb
 
 # Fedora / RHEL
-sudo dnf install ./wireguard-gui-0.2.0-1.x86_64.rpm
+sudo dnf install ./wireguard-gui-0.3.0-1.x86_64.rpm
 
 # 任意发行版（AppImage，需系统自带 webkit2gtk-4.1）
-chmod +x ./wireguard-gui_0.2.0_amd64.AppImage
-./wireguard-gui_0.2.0_amd64.AppImage
+chmod +x ./wireguard-gui_0.3.0_amd64.AppImage
+./wireguard-gui_0.3.0_amd64.AppImage
 ```
 
 首次运行需要一次 polkit 授权；如需免密管理（单用户机器），可安装 polkit 规则：
