@@ -1,4 +1,6 @@
-// 与 Rust 后端结构一一对应（serde camelCase 映射）
+// 与 Rust Tauri seam 上的 serde 数据结构一一对应。
+
+export type ToastTone = "ok" | "warn" | "err";
 
 export interface PeerStatus {
   public_key: string;
@@ -63,4 +65,20 @@ export interface EnvCheck {
   wg_quick: boolean;
   pkexec: boolean;
   conf_dir_exists: boolean;
+  home: string;
+}
+
+export type ApplyMode = "runtime_only" | "persist_and_sync";
+
+export interface ApplyOutcome {
+  persisted: boolean;
+  runtime_applied: boolean;
+  warnings: string[];
+}
+
+export type InterfaceAction = "up" | "down" | "restart" | "sync";
+
+export interface TransferRates {
+  rx: number;
+  tx: number;
 }

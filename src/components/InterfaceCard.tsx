@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { api, errText } from "../api";
-import type { InterfaceStatus } from "../types";
+import type { InterfaceAction, InterfaceStatus, ToastTone } from "../types";
 import { fmtBytes, fmtRate, maskKey } from "../utils";
+import { errText, wireguard } from "../wireguard";
 import PeersPanel from "./PeersPanel";
 
 interface Props {
   iface: InterfaceStatus;
   rates: { rx: number; tx: number } | null;
   onChanged: () => void;
-  notify: (msg: string, tone: "ok" | "err") => void;
+  notify: (msg: string, tone: ToastTone) => void;
 }
 
 export default function InterfaceCard({ iface, rates, onChanged, notify }: Props) {
@@ -16,19 +16,14 @@ export default function InterfaceCard({ iface, rates, onChanged, notify }: Props
   const [busy, setBusy] = useState<string | null>(null);
   const [revealKey, setRevealKey] = useState(false);
 
-  async function run(action: "up" | "down" | "restart" | "syncconf") {
+  async function run(action: InterfaceAction) {
     setBusy(action);
     const label =
       action === "up" ? "启动" :
       action === "down" ? "停止" :
       action === "restart" ? "重启" : "热同步";
     try {
-      switch (action) {
-        case "up": await api.interfaceUp(iface.name); break;
-        case "down": await api.interfaceDown(iface.name); break;
-        case "restart": await api.interfaceRestart(iface.name); break;
-        case "syncconf": await api.syncconf(iface.name); break;
-      }
+      await wireguard.applyInterface(iface.name, action);
       notify(`${iface.name} ${label}成功`, "ok");
       onChanged();
     } catch (e) {
@@ -49,8 +44,8 @@ export default function InterfaceCard({ iface, rates, onChanged, notify }: Props
         <div className="card-actions">
           {iface.running ? (
             <>
-              <button className="btn ghost small" onClick={() => run("syncconf")} disabled={busy !== null}>
-                {busy === "syncconf" ? "…" : "热同步"}
+              <button className="btn ghost small" onClick={() => run("sync")} disabled={busy !== null}>
+                {busy === "sync" ? "…" : "热同步"}
               </button>
               <button className="btn ghost small" onClick={() => run("restart")} disabled={busy !== null}>
                 {busy === "restart" ? "…" : "重启"}

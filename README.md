@@ -20,21 +20,30 @@
 - **特权桥接**：所有 root 操作经 `pkexec`（polkit）执行，每次操作弹系统授权框；同一会话内 polkit 会记住授权，后续静默放行。
 - **密钥不进命令行**：私钥、预共享密钥、`wg setconf` 的配置一律经 **stdin** 传给 `wg`，避免泄露到 `/proc/<pid>/cmdline`。
 - **文件名校验**：配置名与接口名均做白名单校验，杜绝路径穿越。
-- **文件权限**：写入 `/etc/wireguard/*.conf` 后强制 `chmod 600`。
+- **文件权限**：通过一次特权 `install -m 600` 写入 `/etc/wireguard/*.conf`，避免权限设置分成两步。
+- **安全导出**：导出由当前用户写入 HOME 内路径，并拒绝符号链接目录。
 - 私钥在前端默认脱敏显示，手动点击才展开。
 
 ## 架构
 
 ```
-React UI (src/) ──Tauri IPC──> Rust 后端 (src-tauri/src/)
-                                  ├─ wg/elevate.rs   pkexec 桥（密钥走 stdin）
-                                  ├─ wg/dump.rs      wg show all dump 解析
-                                  ├─ wg/conf.rs      wg-quick 配置解析/序列化
-                                  └─ wg/ops.rs       高层操作 + 校验
+React render modules
+  ├─ domain/configuration.ts   配置文档与 Apply Outcome
+  ├─ domain/peerEditing.ts     Peer draft、验证与 Apply Mode
+  └─ domain/statusMonitor.ts   采样、速率、single-flight 与授权冷却
+             │
+             └─ wireguard.ts（Tauri adapter）
+                         │ IPC
+Rust wg::ops（配置生命周期与 Runtime Interface 行为）
+  ├─ wg/host.rs   Linux adapter：pkexec、命令、文件、sysfs
+  ├─ wg/conf.rs   wg-quick 配置解析/序列化
+  └─ wg/dump.rs   wg show all dump 解析
 ```
 
 - 接口流量统计读 `/sys/class/net/*/statistics`（免特权）；地址/MTU 经 `ip -j addr`（免特权）。
 - Peer/握手等运行态信息经 `pkexec wg show all dump`。
+- 热同步先执行 `wg-quick strip`，再通过 stdin 交给 `wg syncconf`。
+- 配置保存和运行时同步分别记录结果，界面可准确提示部分成功。
 
 ## 安装
 
@@ -56,7 +65,7 @@ chmod +x ./wireguard-gui_0.1.0_amd64.AppImage
 
 ```bash
 # /etc/polkit-1/rules.d/50-wireguard-gui.rules
-# 允许当前用户在本地活动会话中免密运行 wg / wg-quick / tee / chmod / cat / ls / install
+# 允许当前用户在本地活动会话中免密运行 wg / wg-quick / cat / ls / install
 ```
 
 ## 开发
@@ -85,11 +94,12 @@ release 二进制位于 `src-tauri/target/release/wireguard-gui`，安装包位�
 ## 测试
 
 ```bash
-cargo test   # src-tauri 下运行解析器单元测试（dump/conf）
+pnpm test                         # TypeScript domain module 测试
+cd src-tauri && cargo test --locked  # Rust host、生命周期与 parser 测试
 ```
 
 ## 已知限制
 
-- 序列化配置时会丢弃原文件中的注释（结构保真，注释不保留）。
+- 配置原文编辑会保留注释；通过 Peer 管理写回结构化配置时会丢弃注释。
 - 仅支持 Linux（依赖 pkexec 与 /etc/wireguard 约定）。
-- 接口关闭时仪表盘不显示该接口（运行态数据来自内核 dump）；Peer 可在配置页查看。
+- 已停止但存在配置的接口会显示在仪表盘；运行态地址、流量和 Peer 信息在启动后填充。

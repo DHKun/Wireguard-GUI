@@ -1,101 +1,67 @@
 import { useMemo, useState } from "react";
-import { api, errText } from "../api";
-import type { InterfaceStatus, PeerConf } from "../types";
+import { describeApplyOutcome } from "../domain/configuration";
+import { PeerEditing, type PeerEditTarget } from "../domain/peerEditing";
+import type { InterfaceStatus, PeerConf, ToastTone } from "../types";
 import { fmtBytes, handshakeAge, shortKey } from "../utils";
-import PeerForm, { toForm, type PeerFormState } from "./PeerForm";
+import { errText, wireguard } from "../wireguard";
+import PeerForm from "./PeerForm";
 
 interface Props {
   iface: InterfaceStatus;
   onChanged: () => void;
-  notify: (msg: string, tone: "ok" | "err") => void;
+  notify: (msg: string, tone: ToastTone) => void;
 }
 
-const emptyPeer = (): PeerFormState => ({
-  public_key: "",
-  allowed_ips: [],
-  extras: [],
-});
+const peerEditing = new PeerEditing(wireguard);
 
 export default function PeersPanel({ iface, onChanged, notify }: Props) {
-  const [draft, setDraft] = useState<PeerFormState[] | null>(null);
-  const [editing, setEditing] = useState<number | "new" | null>(null);
+  const [draft, setDraft] = useState<PeerConf[] | null>(null);
+  const [editing, setEditing] = useState<PeerEditTarget | null>(null);
   const [syncConf, setSyncConf] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const live = useMemo(
-    () =>
-      iface.peers.map((p): PeerFormState => ({
-        public_key: p.public_key,
-        preshared_key: p.preshared_key ?? undefined,
-        allowed_ips: [...p.allowed_ips],
-        endpoint: p.endpoint ?? undefined,
-        persistent_keepalive: p.persistent_keepalive ?? undefined,
-        extras: [],
-      })),
-    [iface.peers],
-  );
+  const live = useMemo(() => peerEditing.draft(iface.peers), [iface.peers]);
 
   const peers = draft ?? live;
   const dirty = draft !== null;
 
   function startDraft() {
-    if (draft === null) setDraft(live.map((p) => ({ ...p, extras: [...p.extras] })));
+    if (draft === null) setDraft(peerEditing.draft(iface.peers));
   }
 
   function savePeer(peer: PeerConf) {
-    const next = draft === null ? live.map((p) => ({ ...p, extras: [...p.extras] })) : draft;
-    if (editing === "new") {
-      next.push(toForm(peer));
-    } else if (typeof editing === "number") {
-      next[editing] = toForm(peer);
+    if (editing === null) return;
+    try {
+      setDraft(peerEditing.save(draft ?? peerEditing.draft(iface.peers), editing, peer));
+      setEditing(null);
+      setError(null);
+    } catch (cause) {
+      setError(errText(cause));
     }
-    setDraft(next);
-    setEditing(null);
-    setError(null);
   }
 
   function removePeer(idx: number) {
-    startDraft();
-    setDraft((d) => (d ? d.filter((_, i) => i !== idx) : d));
+    setDraft(peerEditing.remove(draft ?? peerEditing.draft(iface.peers), idx));
   }
 
   async function apply() {
     if (dirty === false || !draft) return;
     setBusy(true);
     setError(null);
-    const target: PeerConf[] = draft.map((f) => ({
-      public_key: f.public_key.trim(),
-      preshared_key: f.preshared_key?.trim() || undefined,
-      allowed_ips: f.allowed_ips.map((s) => s.trim()).filter(Boolean),
-      endpoint: f.endpoint?.trim() || undefined,
-      persistent_keepalive: f.persistent_keepalive || undefined,
-      extras: f.extras,
-    }));
     try {
-      const confName = `${iface.name}.conf`;
-      let hasConf = false;
-      try {
-        hasConf = (await api.listConfigs()).includes(confName);
-      } catch {
-        hasConf = false;
-      }
-      if (syncConf && hasConf) {
-        // 读当前配置文件 → 替换 Peer 列表 → 写回 → 热同步到运行中接口
-        const conf = await api.readConfigParsed(confName);
-        conf.peers = target;
-        await api.writeConfigParsed(confName, conf);
-        await api.syncconf(iface.name);
-        notify(`已写入 ${confName} 并热同步`, "ok");
-      } else {
-        await api.setPeers(iface.name, target);
-        notify(
-          syncConf && !hasConf
-            ? `未找到 ${confName}，更改仅应用到运行时`
-            : `已应用到运行中的 ${iface.name}`,
-          "ok",
-        );
-      }
+      const outcome = await peerEditing.apply(
+        iface.name,
+        draft,
+        syncConf ? "persist_and_sync" : "runtime_only",
+      );
+      const success = outcome.persisted
+        ? `已持久化 Peer 更改并同步 ${iface.name}`
+        : `已应用到运行中的 ${iface.name}`;
+      notify(
+        describeApplyOutcome(success, outcome),
+        outcome.warnings.length ? "warn" : "ok",
+      );
       setDraft(null);
       setEditing(null);
       onChanged();
@@ -109,7 +75,7 @@ export default function PeersPanel({ iface, onChanged, notify }: Props) {
 
   const editingForm =
     editing === "new"
-      ? emptyPeer()
+      ? peerEditing.empty()
       : typeof editing === "number" && peers[editing]
         ? peers[editing]
         : null;

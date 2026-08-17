@@ -1,45 +1,17 @@
 import { useEffect, useState } from "react";
-import { api, errText } from "../api";
-import type { PeerConf } from "../types";
-
-export interface PeerFormState {
-  public_key: string;
-  preshared_key?: string;
-  allowed_ips: string[];
-  endpoint?: string;
-  persistent_keepalive?: number;
-  extras: [string, string][];
-}
-
-export function toForm(p: PeerConf): PeerFormState {
-  return {
-    public_key: p.public_key,
-    preshared_key: p.preshared_key || undefined,
-    allowed_ips: [...p.allowed_ips],
-    endpoint: p.endpoint || undefined,
-    persistent_keepalive: p.persistent_keepalive || undefined,
-    extras: [...p.extras],
-  };
-}
-
-export function fromForm(f: PeerFormState): PeerConf {
-  return {
-    public_key: f.public_key.trim(),
-    preshared_key: f.preshared_key?.trim() || undefined,
-    allowed_ips: f.allowed_ips.map((s) => s.trim()).filter(Boolean),
-    endpoint: f.endpoint?.trim() || undefined,
-    persistent_keepalive: f.persistent_keepalive || undefined,
-    extras: f.extras,
-  };
-}
+import { PeerEditing } from "../domain/peerEditing";
+import type { PeerConf, ToastTone } from "../types";
+import { errText, wireguard } from "../wireguard";
 
 interface Props {
   title: string;
-  initial: PeerFormState;
+  initial: PeerConf;
   onSave: (peer: PeerConf) => void;
   onCancel: () => void;
-  notify: (msg: string, tone: "ok" | "err") => void;
+  notify: (msg: string, tone: ToastTone) => void;
 }
+
+const peerEditing = new PeerEditing(wireguard);
 
 export default function PeerForm({ title, initial, onSave, onCancel, notify }: Props) {
   const [pub, setPub] = useState(initial.public_key);
@@ -68,7 +40,7 @@ export default function PeerForm({ title, initial, onSave, onCancel, notify }: P
     setBusy(true);
     setError(null);
     try {
-      const kp = await api.generateKeypair();
+      const kp = await peerEditing.generateKeypair();
       setPub(kp.public_key);
       setGenPriv(kp.private_key);
       notify("已生成密钥对，私钥仅显示这一次", "ok");
@@ -83,7 +55,7 @@ export default function PeerForm({ title, initial, onSave, onCancel, notify }: P
     setBusy(true);
     setError(null);
     try {
-      setPsk(await api.generatePresharedKey());
+      setPsk(await peerEditing.generatePresharedKey());
     } catch (e) {
       setError(errText(e));
     } finally {
@@ -92,30 +64,25 @@ export default function PeerForm({ title, initial, onSave, onCancel, notify }: P
   }
 
   function submit() {
-    const trimmed = pub.trim();
-    if (!trimmed) return setError("PublicKey 不能为空");
-    if (trimmed.length !== 44) return setError("PublicKey 应为 44 字符的 base64 密钥");
     const ips = allowed
       .split(/[\s,]+/)
       .map((s) => s.trim())
       .filter(Boolean);
-    if (ips.length === 0) return setError("AllowedIPs 至少填一项");
     let ka: number | undefined;
     if (keepalive.trim() !== "") {
       ka = Number(keepalive);
-      if (!Number.isInteger(ka) || ka < 1 || ka > 65535)
-        return setError("PersistentKeepalive 需为 1–65535 的整数，留空表示关闭");
     }
-    onSave(
-      fromForm({
-        public_key: trimmed,
-        preshared_key: psk.trim() || undefined,
-        allowed_ips: ips,
-        endpoint: endpoint.trim() || undefined,
-        persistent_keepalive: ka,
-        extras: initial.extras,
-      }),
-    );
+    const peer: PeerConf = {
+      public_key: pub.trim(),
+      preshared_key: psk.trim() || undefined,
+      allowed_ips: ips,
+      endpoint: endpoint.trim() || undefined,
+      persistent_keepalive: ka,
+      extras: initial.extras,
+    };
+    const validation = peerEditing.validate(peer);
+    if (validation) return setError(validation);
+    onSave(peer);
   }
 
   return (
