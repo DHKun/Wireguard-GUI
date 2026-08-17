@@ -36,6 +36,25 @@ React UI (src/) ──Tauri IPC──> Rust 后端 (src-tauri/src/)
 - 接口流量统计读 `/sys/class/net/*/statistics`（免特权）；地址/MTU 经 `ip -j addr`（免特权）。
 - Peer/握手等运行态信息经 `pkexec wg show all dump`。
 
+## 安装
+
+从 [Releases](https://github.com/DHKun/Wireguard-GUI/releases) 下载对应包：
+
+```bash
+# Debian / Ubuntu
+sudo apt install ./wireguard-gui_0.1.0_amd64.deb
+
+# Fedora / RHEL
+sudo dnf install ./wireguard-gui-0.1.0-1.x86_64.rpm
+```
+
+首次运行需要一次 polkit 授权；如需免密管理（单用户机器），可安装 polkit 规则：
+
+```bash
+# /etc/polkit-1/rules.d/50-wireguard-gui.rules
+# 允许当前用户在本地活动会话中免密运行 wg / wg-quick / tee / chmod / cat / ls / install
+```
+
 ## 开发
 
 前置：Rust 工具链、Node ≥ 20、`webkit2gtk-4.1`、`pkexec`（polkit）。
@@ -49,10 +68,11 @@ pnpm tauri dev        # 开发模式（Vite HMR + debug 二进制）
 
 ```bash
 pnpm tauri build --no-bundle   # 仅产出 release 二进制
-pnpm tauri build               # 打包（rpm/deb/appimage 等，需相应打包工具）
+pnpm tauri build               # 打包 deb + rpm（需 dpkg-deb / rpmbuild）
 ```
 
-release 二进制位于 `src-tauri/target/release/wireguard-gui`。
+release 二进制位于 `src-tauri/target/release/wireguard-gui`，安装包位于
+`src-tauri/target/release/bundle/{deb,rpm}/`。
 
 ## 测试
 
