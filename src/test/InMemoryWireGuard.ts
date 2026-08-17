@@ -1,6 +1,7 @@
 import type {
   ApplyMode,
   ApplyOutcome,
+  AppSettings,
   EnvCheck,
   InterfaceAction,
   InterfaceStatus,
@@ -23,6 +24,11 @@ export class InMemoryWireGuard implements WireGuardPort {
   observeCalls = 0;
   observeHandler: () => Promise<InterfaceStatus[]> = async () => this.interfaces;
   appliedPeers: { name: string; peers: PeerConf[]; mode: ApplyMode }[] = [];
+  appSettings: AppSettings = {
+    autostart: false,
+    silent_start: false,
+    close_to_tray: false,
+  };
 
   observe() {
     this.observeCalls += 1;
@@ -69,5 +75,14 @@ export class InMemoryWireGuard implements WireGuardPort {
       conf_dir_exists: true,
       home: "/home/test",
     };
+  }
+
+  async getAppSettings() {
+    return { ...this.appSettings };
+  }
+
+  async updateAppSettings(settings: AppSettings) {
+    this.appSettings = { ...settings };
+    return { ...this.appSettings };
   }
 }

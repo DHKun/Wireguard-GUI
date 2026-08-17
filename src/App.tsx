@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ConfigPanel from "./components/ConfigPanel";
 import InterfaceCard from "./components/InterfaceCard";
+import SettingsPanel from "./components/SettingsPanel";
 import { StatusMonitor, type MonitorSnapshot } from "./domain/statusMonitor";
 import type { ToastTone } from "./types";
 import { wireguard } from "./wireguard";
@@ -25,7 +26,7 @@ export default function App() {
     lastUpdated: null,
   });
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [tab, setTab] = useState<"dash" | "config">("dash");
+  const [tab, setTab] = useState<"dash" | "config" | "settings">("dash");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [envOk, setEnvOk] = useState<boolean | null>(null);
   const [envDetail, setEnvDetail] = useState<string>("");
@@ -71,6 +72,9 @@ export default function App() {
           </button>
           <button className={tab === "config" ? "tab active" : "tab"} onClick={() => setTab("config")}>
             配置
+          </button>
+          <button className={tab === "settings" ? "tab active" : "tab"} onClick={() => setTab("settings")}>
+            设置
           </button>
         </nav>
         <div className="topbar-right">
@@ -129,8 +133,10 @@ export default function App() {
               ))
             )}
           </div>
-        ) : (
+        ) : tab === "config" ? (
           <ConfigPanel notify={notify} />
+        ) : (
+          <SettingsPanel notify={notify} />
         )}
       </main>
 

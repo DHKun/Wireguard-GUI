@@ -36,6 +36,7 @@
 | Peer 管理 | 表格内增/删/改，一键生成密钥对与预共享密钥，改动可「仅运行时」或「写入配置并热同步」 |
 | 接口控制 | `wg-quick up / down / restart`，`wg syncconf` 热同步（不中断连接） |
 | 配置中心 | 读取/编辑 `/etc/wireguard/*.conf`（原始文本），保存、保存并热同步、导入、导出 |
+| 设置 | 开机自启、静默启动到托盘、关闭窗口退出或最小化到后台 |
 
 ## 安全设计
 
@@ -52,7 +53,8 @@
 React render modules
   ├─ domain/configuration.ts   配置文档与 Apply Outcome
   ├─ domain/peerEditing.ts     Peer draft、验证与 Apply Mode
-  └─ domain/statusMonitor.ts   采样、速率、single-flight 与授权冷却
+  ├─ domain/statusMonitor.ts   采样、速率、single-flight 与授权冷却
+  └─ domain/appSettings.ts     开机自启、静默启动与关闭行为
              │
              └─ wireguard.ts（Tauri adapter）
                          │ IPC

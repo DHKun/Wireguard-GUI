@@ -571,6 +571,60 @@ main {
   outline: 1px solid var(--accent-2);
 }
 
+/* ---------- 设置 ---------- */
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.settings-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.settings-card h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.settings-row,
+.settings-choice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.settings-row:first-of-type,
+.settings-choice:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.settings-row span,
+.settings-choice span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-row strong,
+.settings-choice strong {
+  font-size: 13px;
+}
+
+.settings-row input[type="checkbox"],
+.settings-choice input[type="radio"] {
+  margin-top: 4px;
+}
+
 /* ---------- Toast ---------- */
 .toasts {
   position: fixed;

@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   ApplyMode,
   ApplyOutcome,
+  AppSettings,
   EnvCheck,
   InterfaceAction,
   InterfaceStatus,
@@ -21,6 +22,8 @@ export interface WireGuardPort {
   generateKeypair(): Promise<KeyPair>;
   generatePresharedKey(): Promise<string>;
   checkEnvironment(): Promise<EnvCheck>;
+  getAppSettings(): Promise<AppSettings>;
+  updateAppSettings(settings: AppSettings): Promise<AppSettings>;
 }
 
 class TauriWireGuardAdapter implements WireGuardPort {
@@ -62,6 +65,14 @@ class TauriWireGuardAdapter implements WireGuardPort {
 
   checkEnvironment() {
     return invoke<EnvCheck>("check_env");
+  }
+
+  getAppSettings() {
+    return invoke<AppSettings>("get_app_settings");
+  }
+
+  updateAppSettings(settings: AppSettings) {
+    return invoke<AppSettings>("update_app_settings", { next: settings });
   }
 }
 

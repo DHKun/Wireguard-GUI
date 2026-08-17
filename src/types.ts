@@ -82,3 +82,9 @@ export interface TransferRates {
   rx: number;
   tx: number;
 }
+
+export interface AppSettings {
+  autostart: boolean;
+  silent_start: boolean;
+  close_to_tray: boolean;
+}
