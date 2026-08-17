@@ -58,7 +58,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="logo">⬡</span>
+          <img className="logo" src="/app-icon.png" alt="" aria-hidden="true" />
           <h1>WireGuard 控制台</h1>
           {envOk === false && (
             <span className="badge-warn" title={envDetail}>

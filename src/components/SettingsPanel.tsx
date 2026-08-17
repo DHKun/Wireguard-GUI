@@ -47,11 +47,11 @@ export default function SettingsPanel({ notify }: Props) {
   return (
     <div className="settings-panel">
       <section className="settings-card">
-        <h2>启动</h2>
+        <h2 className="settings-card-title">启动</h2>
         <label className="settings-row">
-          <span>
+          <span className="settings-copy">
             <strong>开机自启</strong>
-            <span className="muted">登录后自动启动本程序</span>
+            <span className="muted">登录后自动启动 WireGuard 控制台</span>
           </span>
           <input
             type="checkbox"
@@ -61,9 +61,9 @@ export default function SettingsPanel({ notify }: Props) {
           />
         </label>
         <label className="settings-row">
-          <span>
+          <span className="settings-copy">
             <strong>静默启动</strong>
-            <span className="muted">开机自启时不弹出窗口，只出现在托盘</span>
+            <span className="muted">开机自启时隐藏窗口，只显示托盘图标</span>
           </span>
           <input
             type="checkbox"
@@ -75,7 +75,7 @@ export default function SettingsPanel({ notify }: Props) {
       </section>
 
       <section className="settings-card">
-        <h2>关闭窗口</h2>
+        <h2 className="settings-card-title">关闭窗口</h2>
         <label className="settings-choice">
           <input
             type="radio"
@@ -84,7 +84,7 @@ export default function SettingsPanel({ notify }: Props) {
             disabled={busy}
             onChange={() => update("close_to_tray", false)}
           />
-          <span>
+          <span className="settings-copy">
             <strong>直接退出</strong>
             <span className="muted">关闭窗口即结束进程</span>
           </span>
@@ -97,9 +97,9 @@ export default function SettingsPanel({ notify }: Props) {
             disabled={busy}
             onChange={() => update("close_to_tray", true)}
           />
-          <span>
+          <span className="settings-copy">
             <strong>最小化到后台</strong>
-            <span className="muted">关闭窗口后继续在托盘运行，左键托盘可恢复</span>
+            <span className="muted">关闭窗口后继续运行，通过托盘菜单恢复窗口</span>
           </span>
         </label>
       </section>

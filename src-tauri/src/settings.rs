@@ -9,22 +9,12 @@ const SETTINGS_FILE: &str = "settings.json";
 const AUTOSTART_FILE: &str = "wireguard-gui.desktop";
 const SILENT_FLAG: &str = "--silent";
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 #[serde(default)]
 pub struct AppSettings {
     pub autostart: bool,
     pub silent_start: bool,
     pub close_to_tray: bool,
-}
-
-impl Default for AppSettings {
-    fn default() -> Self {
-        Self {
-            autostart: false,
-            silent_start: false,
-            close_to_tray: false,
-        }
-    }
 }
 
 pub fn wants_silent_start(args: impl IntoIterator<Item = impl AsRef<str>>) -> bool {

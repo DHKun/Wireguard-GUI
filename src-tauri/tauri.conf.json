@@ -16,7 +16,8 @@
         "width": 1080,
         "height": 760,
         "minWidth": 820,
-        "minHeight": 560
+        "minHeight": 560,
+        "visible": false
       }
     ],
     "security": {
@@ -32,11 +33,23 @@
     "publisher": "DHKun <DHKun@users.noreply.github.com>",
     "homepage": "https://github.com/DHKun/Wireguard-GUI",
     "icon": [
+      "icons/icon.png",
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "postInstallScript": "scripts/refresh-desktop-cache.sh",
+        "postRemoveScript": "scripts/refresh-desktop-cache.sh"
+      },
+      "rpm": {
+        "postInstallScript": "scripts/refresh-desktop-cache.sh",
+        "postRemoveScript": "scripts/refresh-desktop-cache.sh"
+      }
+    }
   }
 }

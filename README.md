@@ -1,5 +1,9 @@
 # WireGuard 控制台
 
+<p align="center">
+  <img src="src-tauri/icons/icon.png" width="112" alt="WireGuard 控制台 Logo">
+</p>
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 基于 **Tauri v2 + React + TypeScript** 的 WireGuard 桌面管理工具（Linux）。
@@ -27,6 +31,12 @@
 读取、编辑、保存、热同步和导出 `/etc/wireguard/*.conf`。
 
 ![WireGuard 配置中心](docs/screenshots/configuration.png)
+
+### 启动与关闭
+
+配置开机自启、静默启动和关闭窗口行为。
+
+![WireGuard 启动与关闭设置](docs/screenshots/settings.png)
 
 ## 功能
 

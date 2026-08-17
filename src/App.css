@@ -59,8 +59,9 @@ body,
 }
 
 .brand .logo {
-  font-size: 20px;
-  color: var(--accent);
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .brand h1 {
@@ -584,45 +585,101 @@ main {
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 16px 18px;
+  padding: 0 18px 2px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
 }
 
-.settings-card h2 {
-  margin: 0 0 12px;
+.settings-card-title {
+  margin: 0;
+  padding: 18px 0 14px;
   font-size: 14px;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  border-bottom: 1px solid var(--border);
 }
 
-.settings-row,
-.settings-choice {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+.settings-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 16px;
-  padding: 10px 0;
+  min-height: 68px;
+  padding: 12px 0;
   border-top: 1px solid var(--border);
+  cursor: pointer;
 }
 
-.settings-row:first-of-type,
+.settings-row:first-of-type {
+  border-top: none;
+}
+
+.settings-choice {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+
 .settings-choice:first-of-type {
   border-top: none;
-  padding-top: 0;
 }
 
-.settings-row span,
-.settings-choice span {
+.settings-copy {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
-.settings-row strong,
-.settings-choice strong {
+.settings-copy strong {
   font-size: 13px;
+  line-height: 1.35;
 }
 
 .settings-row input[type="checkbox"],
 .settings-choice input[type="radio"] {
-  margin-top: 4px;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent-2);
+  cursor: pointer;
+}
+
+.settings-row input[type="checkbox"] {
+  justify-self: end;
+}
+
+.settings-row:focus-within,
+.settings-choice:focus-within {
+  outline: 1px solid rgba(95, 180, 162, 0.52);
+  outline-offset: -3px;
+  border-radius: 8px;
+}
+
+.settings-row:has(input:disabled),
+.settings-choice:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.settings-row input:disabled,
+.settings-choice input:disabled {
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .settings-card {
+    padding-inline: 14px;
+  }
+
+  .settings-row,
+  .settings-choice {
+    gap: 10px;
+  }
 }
 
 /* ---------- Toast ---------- */

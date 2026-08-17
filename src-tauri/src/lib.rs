@@ -117,20 +117,11 @@ fn show_main_window(app: &tauri::AppHandle) {
     }
 }
 
-fn hide_main_window(app: &tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.hide();
-    }
-}
-
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
-    let icon = app
-        .default_window_icon()
-        .cloned()
-        .ok_or("缺少应用图标，无法创建托盘")?;
+    let icon = tauri::include_image!("./icons/32x32.png");
 
     TrayIconBuilder::with_id("main")
         .icon(icon)
@@ -184,8 +175,8 @@ pub fn run() {
         ])
         .setup(move |app| {
             setup_tray(app)?;
-            if start_hidden {
-                hide_main_window(app.handle());
+            if !start_hidden {
+                show_main_window(app.handle());
             }
             Ok(())
         })
