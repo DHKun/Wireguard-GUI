@@ -46,6 +46,10 @@ sudo apt install ./wireguard-gui_0.1.0_amd64.deb
 
 # Fedora / RHEL
 sudo dnf install ./wireguard-gui-0.1.0-1.x86_64.rpm
+
+# 任意发行版（AppImage，需系统自带 webkit2gtk-4.1）
+chmod +x ./wireguard-gui_0.1.0_amd64.AppImage
+./wireguard-gui_0.1.0_amd64.AppImage
 ```
 
 首次运行需要一次 polkit 授权；如需免密管理（单用户机器），可安装 polkit 规则：
@@ -68,11 +72,15 @@ pnpm tauri dev        # 开发模式（Vite HMR + debug 二进制）
 
 ```bash
 pnpm tauri build --no-bundle   # 仅产出 release 二进制
-pnpm tauri build               # 打包 deb + rpm（需 dpkg-deb / rpmbuild）
+pnpm tauri build               # 打包 deb + rpm + AppImage（需 dpkg-deb / rpmbuild / linuxdeploy）
 ```
 
+> 在较新发行版（如 Fedora 44）上打 AppImage 时，linuxdeploy 自带的旧版
+> `strip` 可能不认识新库的 `.relr.dyn` 段而失败，加 `NO_STRIP=true` 即可：
+> `NO_STRIP=true pnpm tauri build --bundles appimage`
+
 release 二进制位于 `src-tauri/target/release/wireguard-gui`，安装包位于
-`src-tauri/target/release/bundle/{deb,rpm}/`。
+`src-tauri/target/release/bundle/{deb,rpm,appimage}/`。
 
 ## 测试
 
