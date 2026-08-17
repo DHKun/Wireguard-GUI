@@ -190,16 +190,16 @@ impl<H: WireGuardHost> WireGuard<H> {
         self.host.read_config(name)
     }
 
-    pub fn read_config_parsed(&self, name: &str) -> Result<WgConf, String> {
+    fn read_config_parsed(&self, name: &str) -> Result<WgConf, String> {
         parse_conf(&self.read_config(name)?)
     }
 
-    pub fn write_config(&self, name: &str, content: &str) -> Result<(), String> {
+    fn write_config(&self, name: &str, content: &str) -> Result<(), String> {
         validate_conf_name(name)?;
         self.host.write_config(name, content)
     }
 
-    pub fn write_config_parsed(&self, name: &str, configuration: &WgConf) -> Result<(), String> {
+    fn write_config_parsed(&self, name: &str, configuration: &WgConf) -> Result<(), String> {
         self.write_config(name, &serialize_conf(configuration))
     }
 
@@ -211,6 +211,7 @@ impl<H: WireGuardHost> WireGuard<H> {
         content: &str,
         synchronize: bool,
     ) -> Result<ApplyOutcome, String> {
+        parse_conf(content)?;
         self.write_config(name, content)?;
         if !synchronize {
             return Ok(ApplyOutcome::persisted());
@@ -237,7 +238,7 @@ impl<H: WireGuardHost> WireGuard<H> {
     pub fn export_config(&self, name: &str, destination: &str, home: &str) -> Result<(), String> {
         validate_conf_name(name)?;
         let destination = validate_export_path(destination, home)?;
-        self.host.export_config(name, &destination)
+        self.host.export_config(name, &destination, Path::new(home))
     }
 
     pub fn interface_action(&self, name: &str, action: InterfaceAction) -> Result<(), String> {
@@ -275,16 +276,16 @@ impl<H: WireGuardHost> WireGuard<H> {
         }
 
         let mut configuration = self.read_config_parsed(&configuration_name)?;
-        let existing_extras: HashMap<&str, &Vec<(String, String)>> = configuration
+        let existing_extras: HashMap<String, Vec<(String, String)>> = configuration
             .peers
             .iter()
-            .map(|peer| (peer.public_key.as_str(), &peer.extras))
+            .map(|peer| (peer.public_key.clone(), peer.extras.clone()))
             .collect();
         let mut next_peers = peers.to_vec();
         for peer in &mut next_peers {
             if peer.extras.is_empty() {
-                if let Some(extras) = existing_extras.get(peer.public_key.as_str()) {
-                    peer.extras = (*extras).clone();
+                if let Some(extras) = existing_extras.get(&peer.public_key) {
+                    peer.extras = extras.clone();
                 }
             }
         }
@@ -308,7 +309,7 @@ impl<H: WireGuardHost> WireGuard<H> {
         }
     }
 
-    pub fn set_peers(&self, name: &str, peers: &[PeerConf]) -> Result<(), String> {
+    fn set_peers(&self, name: &str, peers: &[PeerConf]) -> Result<(), String> {
         validate_iface_name(name)?;
         self.host
             .set_peers(name, &serialize_peers_for_setconf(peers))
@@ -325,10 +326,6 @@ impl<H: WireGuardHost> WireGuard<H> {
 
     pub fn generate_preshared_key(&self) -> Result<String, String> {
         self.host.generate_preshared_key()
-    }
-
-    pub fn derive_public_key(&self, private_key: &str) -> Result<String, String> {
-        self.host.derive_public_key(private_key)
     }
 }
 
@@ -400,7 +397,12 @@ mod tests {
             Ok(())
         }
 
-        fn export_config(&self, _name: &str, _destination: &Path) -> Result<(), String> {
+        fn export_config(
+            &self,
+            _name: &str,
+            _destination: &Path,
+            _home: &Path,
+        ) -> Result<(), String> {
             Ok(())
         }
 
@@ -519,6 +521,16 @@ mod tests {
         assert!(outcome.runtime_applied);
         assert_eq!(outcome.warnings.len(), 1);
         assert_eq!(wireguard.host.applied_peers.borrow().len(), 1);
+    }
+
+    #[test]
+    fn malformed_configuration_is_not_persisted() {
+        let wireguard = WireGuard::new(InMemoryHost::default());
+
+        let result = wireguard.apply_config("wg0.conf", "[Unknown]\nValue = broken\n", false);
+
+        assert!(result.is_err());
+        assert!(wireguard.host.configurations.borrow().is_empty());
     }
 
     #[test]

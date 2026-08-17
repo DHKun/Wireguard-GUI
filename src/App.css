@@ -527,6 +527,32 @@ main {
   min-width: 0;
 }
 
+.config-document-head {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 320px) 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.config-document-head input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  padding: 7px 10px;
+}
+
+.config-document-head input:disabled {
+  opacity: 0.72;
+}
+
+.danger-text {
+  color: var(--danger);
+}
+
 .conf-editor {
   flex: 1;
   background: var(--bg);
@@ -569,6 +595,11 @@ main {
 
 .toast.ok {
   border-color: rgba(87, 199, 133, 0.5);
+}
+
+.toast.warn {
+  border-color: rgba(217, 164, 65, 0.65);
+  color: var(--warn);
 }
 
 .toast.err {

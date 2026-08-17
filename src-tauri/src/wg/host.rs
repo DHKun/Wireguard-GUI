@@ -105,7 +105,7 @@ pub trait WireGuardHost {
     fn list_config_names(&self) -> Result<Vec<String>, String>;
     fn read_config(&self, name: &str) -> Result<String, String>;
     fn write_config(&self, name: &str, content: &str) -> Result<(), String>;
-    fn export_config(&self, name: &str, destination: &Path) -> Result<(), String>;
+    fn export_config(&self, name: &str, destination: &Path, home: &Path) -> Result<(), String>;
     fn interface_details(&self, name: &str) -> InterfaceDetails;
     fn interface_stats(&self, name: &str) -> (u64, u64);
     fn interface_exists(&self, name: &str) -> bool;
@@ -226,13 +226,10 @@ impl<R: CommandRunner> WireGuardHost for LinuxHost<R> {
         .map(|_| ())
     }
 
-    fn export_config(&self, name: &str, destination: &Path) -> Result<(), String> {
+    fn export_config(&self, name: &str, destination: &Path, home: &Path) -> Result<(), String> {
         let content = self.read_config(name)?;
-        let parent = destination
-            .parent()
-            .ok_or_else(|| "导出路径缺少父目录".to_string())?;
-        fs::create_dir_all(parent).map_err(|error| format!("创建导出目录失败: {error}"))?;
-        if fs::symlink_metadata(destination)
+        let destination = secure_export_destination(destination, home)?;
+        if fs::symlink_metadata(&destination)
             .map(|metadata| metadata.file_type().is_symlink())
             .unwrap_or(false)
         {
@@ -316,11 +313,51 @@ impl<R: CommandRunner> WireGuardHost for LinuxHost<R> {
     }
 }
 
+fn secure_export_destination(
+    destination: &Path,
+    home: &Path,
+) -> Result<std::path::PathBuf, String> {
+    let relative = destination
+        .strip_prefix(home)
+        .map_err(|_| "导出路径必须位于当前用户主目录内".to_string())?;
+    let file_name = relative
+        .file_name()
+        .ok_or_else(|| "导出路径缺少文件名".to_string())?;
+    let canonical_home = home
+        .canonicalize()
+        .map_err(|error| format!("解析用户主目录失败: {error}"))?;
+    let mut parent = canonical_home;
+    if let Some(relative_parent) = relative.parent() {
+        for component in relative_parent.components() {
+            let std::path::Component::Normal(part) = component else {
+                return Err("导出路径包含非法目录".to_string());
+            };
+            parent.push(part);
+            match fs::symlink_metadata(&parent) {
+                Ok(metadata) if metadata.file_type().is_symlink() => {
+                    return Err("导出路径包含符号链接目录".to_string());
+                }
+                Ok(metadata) if !metadata.is_dir() => {
+                    return Err("导出路径包含非目录项".to_string());
+                }
+                Ok(_) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    fs::create_dir(&parent)
+                        .map_err(|error| format!("创建导出目录失败: {error}"))?;
+                }
+                Err(error) => return Err(format!("检查导出目录失败: {error}")),
+            }
+        }
+    }
+    Ok(parent.join(file_name))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::cell::RefCell;
     use std::collections::VecDeque;
+    use std::os::unix::fs::symlink;
 
     #[derive(Clone, Debug, PartialEq, Eq)]
     struct Call {
@@ -419,6 +456,36 @@ mod tests {
     }
 
     #[test]
+    fn system_install_accepts_dev_stdin_as_the_source() {
+        let root = std::env::temp_dir().join(format!(
+            "wireguard-gui-install-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let destination = root.join("wg0.conf");
+        let destination_text = destination.to_string_lossy().into_owned();
+
+        ProcessRunner
+            .run(
+                false,
+                INSTALL_BIN,
+                &["-m", "600", "-D", "/dev/stdin", &destination_text],
+                Some(b"secret-config"),
+            )
+            .unwrap();
+
+        assert_eq!(fs::read_to_string(&destination).unwrap(), "secret-config");
+        assert_eq!(
+            fs::metadata(&destination).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn private_key_only_crosses_the_runner_via_stdin() {
         let runner = RecordingRunner::with_outputs(vec![Ok(b"public-key\n".to_vec())]);
         let host = LinuxHost::with_runner(runner);
@@ -430,5 +497,27 @@ mod tests {
         assert_eq!(calls[0].args, ["pubkey".to_string()]);
         assert!(!calls[0].args.iter().any(|arg| arg.contains("private-key")));
         assert_eq!(calls[0].stdin.as_deref(), Some(b"private-key".as_slice()));
+    }
+
+    #[test]
+    fn export_rejects_symlinked_parent_directory() {
+        let root = std::env::temp_dir().join(format!(
+            "wireguard-gui-export-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let home = root.join("home");
+        let outside = root.join("outside");
+        fs::create_dir_all(&home).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        symlink(&outside, home.join("escape")).unwrap();
+
+        let result = secure_export_destination(&home.join("escape/wg0.conf"), &home);
+
+        assert!(result.is_err());
+        fs::remove_dir_all(&root).unwrap();
     }
 }

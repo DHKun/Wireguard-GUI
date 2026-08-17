@@ -1,113 +1,112 @@
 import { useEffect, useState } from "react";
-import { api, errText } from "../api";
+import {
+  ConfigurationLifecycle,
+  isConfigurationName,
+  type ConfigurationDocument,
+} from "../domain/configuration";
+import type { ToastTone } from "../types";
+import { errText, wireguard } from "../wireguard";
 
 interface Props {
-  notify: (msg: string, tone: "ok" | "err") => void;
+  notify: (message: string, tone: ToastTone) => void;
 }
+
+const configuration = new ConfigurationLifecycle(wireguard);
 
 export default function ConfigPanel({ notify }: Props) {
   const [configs, setConfigs] = useState<string[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [text, setText] = useState("");
-  const [dirty, setDirty] = useState(false);
+  const [document, setDocument] = useState<ConfigurationDocument | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     try {
-      const list = await api.listConfigs();
+      const list = await configuration.list();
       setConfigs(list);
-      if (selected && !list.includes(selected)) {
-        setSelected(null);
-        setText("");
-        setDirty(false);
-      }
-    } catch (e) {
-      setError(errText(e));
+      setDocument((current) =>
+        current?.source === "stored" && !list.includes(current.name) ? null : current,
+      );
+    } catch (cause) {
+      setError(errText(cause));
     }
   }
 
   useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void refresh();
   }, []);
 
   async function open(name: string) {
-    if (dirty && !window.confirm(`放弃对 ${selected} 的未保存修改？`)) return;
+    if (
+      document?.dirty &&
+      !window.confirm(`放弃对 ${document.name || "新配置"} 的未保存修改？`)
+    ) {
+      return;
+    }
     setBusy("load");
     setError(null);
     try {
-      const t = await api.readConfig(name);
-      setSelected(name);
-      setText(t);
-      setDirty(false);
-    } catch (e) {
-      setError(errText(e));
+      setDocument(await configuration.open(name));
+    } catch (cause) {
+      setError(errText(cause));
     } finally {
       setBusy(null);
     }
   }
 
-  async function save(apply: boolean) {
-    if (!selected) return;
-    setBusy(apply ? "apply" : "save");
+  async function save(synchronize: boolean) {
+    if (!document) return;
+    setBusy(synchronize ? "apply" : "save");
     setError(null);
     try {
-      await api.writeConfig(selected, text);
-      if (apply) {
-        await api.syncconf(selected.replace(/\.conf$/, ""));
-      }
-      setDirty(false);
-      notify(apply ? `已保存并热同步 ${selected}` : `已保存 ${selected}`, "ok");
-    } catch (e) {
-      setError(errText(e));
-      notify(`保存失败：${errText(e)}`, "err");
+      const result = await configuration.apply(document, synchronize);
+      setDocument(result.document);
+      await refresh();
+      notify(result.message, result.outcome.warnings.length ? "warn" : "ok");
+    } catch (cause) {
+      const message = errText(cause);
+      setError(message);
+      notify(`保存失败：${message}`, "err");
     } finally {
       setBusy(null);
     }
   }
 
-  async function importFile() {
-    // 浏览器级文件选择器（webkit2gtk 原生对话框）
-    const input = document.createElement("input");
+  function importFile() {
+    const input = window.document.createElement("input");
     input.type = "file";
     input.accept = ".conf,text/plain";
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
       try {
-        setText(await file.text());
-        setSelected(null);
-        setDirty(true);
-        notify(`已载入 ${file.name} 到编辑器（尚未写入）`, "ok");
-      } catch (e) {
-        notify(`读取文件失败：${errText(e)}`, "err");
+        setDocument(configuration.imported(file.name, await file.text()));
+        setError(null);
+        notify(`已载入 ${file.name}，请确认配置名后保存`, "ok");
+      } catch (cause) {
+        notify(`读取文件失败：${errText(cause)}`, "err");
       }
     };
     input.click();
   }
 
   async function exportFile() {
-    if (!selected) return;
+    if (!document || document.source !== "stored") return;
     setBusy("export");
     try {
-      const env = await api.checkEnv();
-      const home = env.home || "/home/dohokun";
-      const dest = window.prompt(
-        `导出 ${selected} 到（绝对路径）：`,
-        `${home}/Downloads/${selected}`,
+      const environment = await wireguard.checkEnvironment();
+      const destination = window.prompt(
+        `导出 ${document.name} 到 HOME 内路径：`,
+        `${environment.home}/Downloads/${document.name}`,
       );
-      if (!dest) return;
-      await api.exportConfig(selected, dest);
-      notify(`已导出到 ${dest}`, "ok");
-    } catch (e) {
-      notify(`导出失败：${errText(e)}`, "err");
+      if (!destination) return;
+      await configuration.export(document, destination);
+      notify(`已导出到 ${destination}`, "ok");
+    } catch (cause) {
+      notify(`导出失败：${errText(cause)}`, "err");
     } finally {
       setBusy(null);
     }
   }
-
-  const ifaceName = selected?.replace(/\.conf$/, "");
 
   return (
     <div className="config-panel">
@@ -124,13 +123,15 @@ export default function ConfigPanel({ notify }: Props) {
           <div className="empty">/etc/wireguard 下暂无 .conf 文件</div>
         ) : (
           <ul className="config-list">
-            {configs.map((c) => (
-              <li key={c}>
+            {configs.map((name) => (
+              <li key={name}>
                 <button
-                  className={`config-item mono ${selected === c ? "active" : ""}`}
-                  onClick={() => open(c)}
+                  className={`config-item mono ${
+                    document?.source === "stored" && document.name === name ? "active" : ""
+                  }`}
+                  onClick={() => open(name)}
                 >
-                  {c}
+                  {name}
                 </button>
               </li>
             ))}
@@ -139,38 +140,67 @@ export default function ConfigPanel({ notify }: Props) {
       </div>
 
       <div className="config-main">
-        {selected === null ? (
-          <div className="empty tall">
-            {text === "" ? "选择一个配置文件，或导入文件开始编辑" : "（新文件）输入内容后点「保存为新文件」"}
-          </div>
+        {document === null ? (
+          <div className="empty tall">选择一个配置文件，或导入文件开始编辑</div>
         ) : (
-          <textarea
-            className="conf-editor"
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              setDirty(true);
-            }}
-            spellCheck={false}
-          />
+          <>
+            <div className="config-document-head">
+              <label htmlFor="configuration-name">配置名</label>
+              <input
+                id="configuration-name"
+                className="mono"
+                value={document.name}
+                disabled={document.source === "stored"}
+                onChange={(event) =>
+                  setDocument(configuration.rename(document, event.target.value))
+                }
+                spellCheck={false}
+              />
+              {document.source === "imported" && !isConfigurationName(document.name) && (
+                <span className="danger-text">名称需符合 *.conf 规则</span>
+              )}
+            </div>
+            <textarea
+              className="conf-editor"
+              value={document.text}
+              onChange={(event) =>
+                setDocument(configuration.edit(document, event.target.value))
+              }
+              spellCheck={false}
+            />
+          </>
         )}
 
         {error && <div className="err-box">{error}</div>}
 
         <div className="toolbar bottom">
-          {selected && (
+          {document && (
             <>
-              <button className="btn primary" onClick={() => save(false)} disabled={busy !== null}>
-                {busy === "save" ? "保存中…" : "保存"}
+              <button
+                className="btn primary"
+                onClick={() => save(false)}
+                disabled={busy !== null || !isConfigurationName(document.name)}
+              >
+                {busy === "save"
+                  ? "保存中…"
+                  : document.source === "imported"
+                    ? "保存为新配置"
+                    : "保存"}
               </button>
-              <button className="btn" onClick={() => save(true)} disabled={busy !== null || !ifaceName}>
+              <button
+                className="btn"
+                onClick={() => save(true)}
+                disabled={busy !== null || !isConfigurationName(document.name)}
+              >
                 {busy === "apply" ? "应用中…" : "保存并热同步"}
               </button>
-              <button className="btn ghost" onClick={exportFile} disabled={busy !== null}>
-                导出
-              </button>
+              {document.source === "stored" && (
+                <button className="btn ghost" onClick={exportFile} disabled={busy !== null}>
+                  导出
+                </button>
+              )}
               <span className="muted small">
-                {dirty ? "● 未保存" : "已保存"} · 写入时权限 0600，注释不保留
+                {document.dirty ? "● 未保存" : "已保存"} · 原文保存 · 权限 0600
               </span>
             </>
           )}
