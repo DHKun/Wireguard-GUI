@@ -74,8 +74,24 @@ fn check_env() -> Result<ops::EnvCheck, String> {
     Ok(ops::environment())
 }
 
+/// WebKitGTK 的 DMABUF 渲染器在 Wayland（尤其 KDE + 部分 GPU 驱动）上会触发
+/// Wayland 协议错误（Gdk-Message: Error 71）导致窗口创建即崩溃闪退。
+/// 启动时若处于 Wayland 且用户未显式设置该变量，则默认禁用 DMABUF 渲染。
+/// 用户可通过 WEBKIT_DISABLE_DMABUF_RENDERER=0 显式恢复硬件加速路径。
+#[cfg(target_os = "linux")]
+fn apply_webkit_workarounds() {
+    if std::env::var_os("WAYLAND_DISPLAY").is_some()
+        && std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+    {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    apply_webkit_workarounds();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
